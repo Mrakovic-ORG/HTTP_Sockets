@@ -1,0 +1,9 @@
+{
+  "name": "HTTP_Sockets",
+  "version": "1.0.0",
+  "dependencies": {},
+  "devDependencies": {
+    "cloudscraper": "^4.6.0",
+    "request": "^2.88.2"
+  }
+}
